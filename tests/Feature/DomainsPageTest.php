@@ -46,7 +46,14 @@ class DomainsPageTest extends TestCase
         $this->assertSame(2000, $a->unruled);
         $this->assertEqualsWithDelta(1500 / 3500, $a->fill, 0.0001);
 
+        \App\Models\PricingRule::create(['name' => 'YIT_0.10'] + \App\Models\PricingRule::parseName('YIT_0.10'));
+
         $component->call('select', 'a.nl');
+        $breakdown = $component->instance()->breakdown->firstWhere('rule', 'YIT_0.10');
+        $this->assertSame('0.1000', (string) $breakdown->floor);
+        $this->assertEqualsWithDelta(10.0 / 0.10, $breakdown->headroom, 0.0001); // eCPM 10.00 / floor 0.10
+        $this->assertNull($component->instance()->breakdown->firstWhere('rule', PricingRuleStat::NO_RULE)->floor);
+
         $html = $component->html();
         $this->assertStringContainsString('YIT_0.10', $html);
         $this->assertTrue(strpos($html, 'a.nl') < strpos($html, 'YIT_0.10'));

@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\PricingRule;
 use App\Models\PricingRuleStat;
 use Flux\DateRange;
 use Illuminate\Support\Carbon;
@@ -102,20 +103,26 @@ new class extends Component {
             return collect();
         }
 
+        $floors = PricingRule::pluck('floor', 'name');
+
         return $this->stats()
             ->where('domain', $this->selected)
             ->groupBy('rule_name')
-            ->map(function (Collection $g, string $rule) {
+            ->map(function (Collection $g, string $rule) use ($floors) {
                 $impressions = (int) $g->sum('impressions');
                 $revenue = (float) $g->sum('revenue');
                 $requests = (int) $g->sum('requests');
+                $ecpm = $impressions > 0 ? $revenue / $impressions * 1000 : null;
+                $floor = $floors[$rule] ?? null;
 
                 return (object) [
                     'rule' => $rule,
+                    'floor' => $floor,
                     'revenue' => $revenue,
                     'impressions' => $impressions,
                     'requests' => $requests,
-                    'ecpm' => $impressions > 0 ? $revenue / $impressions * 1000 : null,
+                    'ecpm' => $ecpm,
+                    'headroom' => $ecpm !== null && $floor > 0 ? $ecpm / (float) $floor : null,
                 ];
             })
             ->sortByDesc('revenue')
@@ -174,20 +181,30 @@ new class extends Component {
                                 <thead>
                                     <tr class="text-left text-zinc-500">
                                         <th class="py-1 font-medium">Pricing rule</th>
+                                        <th class="py-1 text-end font-medium">Floor (€ CPM)</th>
                                         <th class="py-1 text-end font-medium">Revenue</th>
                                         <th class="py-1 text-end font-medium">Impressions</th>
                                         <th class="py-1 text-end font-medium">Requests</th>
                                         <th class="py-1 text-end font-medium">eCPM</th>
+                                        <th class="py-1 text-end font-medium">eCPM / floor</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     @foreach ($this->breakdown as $b)
                                         <tr wire:key="{{ $row->domain }}-{{ $b->rule }}" class="border-t border-zinc-200 dark:border-white/10">
                                             <td class="py-1.5">{{ $b->rule }}</td>
+                                            <td class="py-1.5 text-end">{{ $b->floor !== null ? number_format((float) $b->floor, 2) : '—' }}</td>
                                             <td class="py-1.5 text-end">€ {{ number_format($b->revenue, 2) }}</td>
                                             <td class="py-1.5 text-end">{{ number_format($b->impressions) }}</td>
                                             <td class="py-1.5 text-end">{{ number_format($b->requests) }}</td>
                                             <td class="py-1.5 text-end">{{ $b->ecpm !== null ? '€ '.number_format($b->ecpm, 2) : '—' }}</td>
+                                            <td class="py-1.5 text-end">
+                                                @if ($b->headroom !== null)
+                                                    <flux:badge size="sm" :color="$b->headroom >= 3 ? 'amber' : 'zinc'">{{ number_format($b->headroom, 1) }}×</flux:badge>
+                                                @else
+                                                    —
+                                                @endif
+                                            </td>
                                         </tr>
                                     @endforeach
                                 </tbody>

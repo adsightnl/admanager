@@ -16,6 +16,7 @@ Route::middleware(['auth'])->group(function () {
 
     Volt::route('pricing-rules', 'pricing-rules')->name('pricing-rules');
     Volt::route('domains', 'domains')->name('domains');
+    Volt::route('team', 'team')->name('team');
 
     Volt::route('settings/profile', 'settings.profile')->name('settings.profile');
     Volt::route('settings/password', 'settings.password')->name('settings.password');
