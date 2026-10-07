@@ -5,9 +5,10 @@ use App\Models\Invitation;
 use App\Models\User;
 use Illuminate\Support\Facades\Mail;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\Title;
 use Livewire\Volt\Component;
 
-new class extends Component {
+new #[Title('Team')] class extends Component {
     public string $email = '';
 
     /** Link of the invitation just created, shown once so it can be shared when mail is not set up. */

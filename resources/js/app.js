@@ -3,3 +3,4 @@ import { Passkeys, PasskeyError, UserCancelledError, PasskeyExistsError } from '
 // Exposed so Blade/Alpine views can run the WebAuthn ceremonies.
 window.Passkeys = Passkeys;
 window.PasskeyErrors = { PasskeyError, UserCancelledError, PasskeyExistsError };
+window.dispatchEvent(new Event('passkeys:ready'));

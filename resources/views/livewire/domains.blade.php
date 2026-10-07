@@ -7,9 +7,10 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Url;
+use Livewire\Attributes\Title;
 use Livewire\Volt\Component;
 
-new class extends Component {
+new #[Title('Domains')] class extends Component {
     public ?DateRange $range = null;
 
     #[Url(as: 'q')]

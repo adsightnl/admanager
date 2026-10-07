@@ -2,9 +2,10 @@
 
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\Title;
 use Livewire\Volt\Component;
 
-new class extends Component {
+new #[Title('Passkeys')] class extends Component {
     #[Computed]
     public function passkeys(): Collection
     {

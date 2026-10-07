@@ -36,7 +36,7 @@ class PasskeysTest extends TestCase
 
     public function test_login_page_offers_passkey_login_and_the_options_endpoint_works_for_guests(): void
     {
-        $this->get('/login')->assertOk()->assertSee('Log in with a passkey');
+        $this->get('/login')->assertOk()->assertSee('Sign in with a passkey');
 
         $this->getJson('/passkeys/login/options')
             ->assertOk()
