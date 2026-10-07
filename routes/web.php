@@ -17,6 +17,8 @@ Route::middleware(['auth'])->group(function () {
 
     Volt::route('settings/profile', 'settings.profile')->name('settings.profile');
     Volt::route('settings/password', 'settings.password')->name('settings.password');
+    // Managing passkeys needs a recent password confirmation, like the package's own endpoints.
+    Volt::route('settings/passkeys', 'settings.passkeys')->middleware('password.confirm')->name('settings.passkeys');
     Volt::route('settings/appearance', 'settings.appearance')->name('settings.appearance');
 });
 

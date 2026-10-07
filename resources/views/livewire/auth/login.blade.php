@@ -108,4 +108,37 @@ new #[Layout('components.layouts.auth')] class extends Component {
             <flux:button variant="primary" type="submit" class="w-full">{{ __('Log in') }}</flux:button>
         </div>
     </form>
+
+    <!-- Passkey login (only shown when the browser supports WebAuthn) -->
+    <div
+        x-data="{
+            supported: false,
+            busy: false,
+            error: null,
+            init() { this.supported = !!window.Passkeys?.isSupported(); },
+            async login() {
+                this.busy = true;
+                this.error = null;
+                try {
+                    const response = await window.Passkeys.verify({ remember: () => $wire.remember });
+                    window.location.href = response?.redirect ?? '{{ route('dashboard', absolute: false) }}';
+                } catch (e) {
+                    if (!(e instanceof window.PasskeyErrors.UserCancelledError)) {
+                        this.error = e?.message ?? 'Passkey login failed.';
+                    }
+                } finally {
+                    this.busy = false;
+                }
+            },
+        }"
+        x-show="supported"
+        x-cloak
+        class="flex flex-col gap-3"
+    >
+        <flux:separator text="or" />
+        <flux:button type="button" icon="finger-print" class="w-full" x-on:click="login" x-bind:disabled="busy">
+            Log in with a passkey
+        </flux:button>
+        <flux:text x-show="error" x-text="error" class="text-center text-sm !text-red-600 dark:!text-red-400" />
+    </div>
 </div>
