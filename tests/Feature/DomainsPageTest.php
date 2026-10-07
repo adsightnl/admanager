@@ -2,9 +2,12 @@
 
 namespace Tests\Feature;
 
+use App\Models\PricingRule;
 use App\Models\PricingRuleStat;
 use App\Models\User;
+use App\Services\DomainPerformance;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Livewire\Volt\Volt;
 use Tests\TestCase;
 
@@ -15,7 +18,7 @@ class DomainsPageTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        \Illuminate\Support\Carbon::setTestNow('2026-10-06 12:00:00');
+        Carbon::setTestNow('2026-10-06 12:00:00');
     }
 
     private function stat(string $site, string $rule, float $rev, int $imp, int $req): void
@@ -46,7 +49,7 @@ class DomainsPageTest extends TestCase
         $this->assertSame(2000, $a->unruled);
         $this->assertEqualsWithDelta(1500 / 3500, $a->fill, 0.0001);
 
-        \App\Models\PricingRule::create(['name' => 'YIT_0.10'] + \App\Models\PricingRule::parseName('YIT_0.10'));
+        PricingRule::create(['name' => 'YIT_0.10'] + PricingRule::parseName('YIT_0.10'));
 
         $component->call('select', 'a.nl');
         $breakdown = $component->instance()->breakdown->firstWhere('rule', 'YIT_0.10');
@@ -80,5 +83,44 @@ class DomainsPageTest extends TestCase
         // "All time" / cleared picker must not break the page.
         $component->set('range', null)->assertOk();
         $this->assertCount(1, $component->instance()->rows);
+    }
+
+    public function test_fill_rate_colour_bands(): void
+    {
+        $band = fn (?float $f) => DomainPerformance::fillColor($f);
+
+        $this->assertNull($band(null));
+        $this->assertSame('red', $band(0.0));
+        $this->assertSame('red', $band(0.499));
+        $this->assertSame('orange', $band(0.50));
+        $this->assertSame('orange', $band(0.599));
+        $this->assertSame('green', $band(0.60));
+        $this->assertSame('green', $band(0.799));
+        $this->assertSame('orange', $band(0.80));
+        $this->assertSame('orange', $band(1.0));
+    }
+
+    public function test_fill_filter_sits_with_search_and_limits_domains(): void
+    {
+        // fill: red.nl 40%, orange.nl 55%, green.nl 70%, high.nl 90%
+        foreach (['red.nl' => 40, 'orange.nl' => 55, 'green.nl' => 70, 'high.nl' => 90] as $site => $pct) {
+            $this->stat($site, 'AS_0.30_mobile', 1, $pct, 100);
+        }
+        $this->actingAs(User::factory()->create());
+
+        $component = Volt::test('domains');
+        $names = fn () => $component->instance()->rows->pluck('domain')->sort()->values()->all();
+
+        $this->assertSame(['green.nl', 'high.nl', 'orange.nl', 'red.nl'], $names());
+        $component->set('fillFilter', 'red');
+        $this->assertSame(['red.nl'], $names());
+        $component->set('fillFilter', 'orange');
+        $this->assertSame(['high.nl', 'orange.nl'], $names());
+        $component->set('fillFilter', 'green');
+        $this->assertSame(['green.nl'], $names());
+
+        $component->set('fillFilter', 'orange')->set('search', 'high');
+        $this->assertSame(['high.nl'], $names());
+        $component->assertSeeHtml('bg-orange-500');
     }
 }

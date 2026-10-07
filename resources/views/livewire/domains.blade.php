@@ -1,17 +1,23 @@
 <?php
 
 use App\Models\PricingRule;
-use App\Models\PricingRuleStat;
+use App\Services\DomainPerformance;
 use Flux\DateRange;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\Url;
 use Livewire\Volt\Component;
 
 new class extends Component {
     public ?DateRange $range = null;
 
+    #[Url(as: 'q')]
     public string $search = '';
+
+    /** '' (all) or a fill colour: red, orange, green. */
+    #[Url(as: 'fill')]
+    public string $fillFilter = '';
 
     public string $sortBy = 'revenue';
 
@@ -36,45 +42,22 @@ new class extends Component {
         $this->selected = $this->selected === $domain ? null : $domain;
     }
 
-    private static function domain(string $site): string
+    private function from(): string
     {
-        return strtolower(preg_replace('/^www\./i', '', $site));
+        return $this->range?->start()?->toDateString() ?? '1970-01-01';
     }
 
-    /** Stats for the period, one row per site/rule, with the domain normalised. */
-    private function stats(): Collection
+    private function to(): string
     {
-        return PricingRuleStat::query()
-            ->selectRaw('site, rule_name, SUM(revenue) as revenue, SUM(impressions) as impressions, SUM(requests) as requests')
-            ->whereDate('date', '>=', $this->range?->start()?->toDateString() ?? '1970-01-01')
-            ->whereDate('date', '<=', $this->range?->end()?->toDateString() ?? '9999-12-31')
-            ->groupBy('site', 'rule_name')
-            ->get()
-            ->each(fn ($r) => $r->domain = self::domain($r->site));
+        return $this->range?->end()?->toDateString() ?? '9999-12-31';
     }
 
     #[Computed]
     public function rows(): Collection
     {
-        return $this->stats()
-            ->groupBy('domain')
-            ->map(function (Collection $g, string $domain) {
-                $revenue = (float) $g->sum('revenue');
-                $impressions = (int) $g->sum('impressions');
-                $requests = (int) $g->sum('requests');
-                $unruled = (int) $g->where('rule_name', PricingRuleStat::NO_RULE)->sum('requests');
-
-                return (object) [
-                    'domain' => $domain,
-                    'revenue' => $revenue,
-                    'impressions' => $impressions,
-                    'requests' => $requests,
-                    'ecpm' => $impressions > 0 ? $revenue / $impressions * 1000 : null,
-                    'fill' => $requests > 0 ? $impressions / $requests : null,
-                    'unruled' => $unruled,
-                ];
-            })
+        return app(DomainPerformance::class)->domains($this->from(), $this->to())
             ->when($this->search !== '', fn ($c) => $c->filter(fn ($r) => str_contains($r->domain, strtolower(trim($this->search)))))
+            ->when($this->fillFilter !== '', fn ($c) => $c->filter(fn ($r) => $r->fillColor === $this->fillFilter))
             ->sortBy(fn ($r) => $r->{$this->sortBy} ?? 0, SORT_REGULAR, $this->sortDirection === 'desc')
             ->values();
     }
@@ -82,17 +65,7 @@ new class extends Component {
     #[Computed]
     public function totals(): object
     {
-        $rows = $this->rows;
-        $impressions = $rows->sum('impressions');
-        $requests = $rows->sum('requests');
-
-        return (object) [
-            'revenue' => $rows->sum('revenue'),
-            'impressions' => $impressions,
-            'requests' => $requests,
-            'ecpm' => $impressions > 0 ? $rows->sum('revenue') / $impressions * 1000 : null,
-            'fill' => $requests > 0 ? $impressions / $requests : null,
-        ];
+        return app(DomainPerformance::class)->summary($this->from(), $this->to());
     }
 
     /** Per-rule breakdown for the selected domain. */
@@ -105,7 +78,7 @@ new class extends Component {
 
         $floors = PricingRule::pluck('floor', 'name');
 
-        return $this->stats()
+        return app(DomainPerformance::class)->stats($this->from(), $this->to())
             ->where('domain', $this->selected)
             ->groupBy('rule_name')
             ->map(function (Collection $g, string $rule) use ($floors) {
@@ -139,13 +112,19 @@ new class extends Component {
     <div class="flex flex-wrap items-end gap-4">
         <flux:date-picker mode="range" wire:model.live="range" locale="nl-NL" start-day="1" with-presets presets="yesterday last7Days thisMonth lastMonth allTime" label="Period" />
         <flux:input wire:model.live.debounce.300ms="search" icon="magnifying-glass" placeholder="Search domain" label="Domain" />
+        <flux:select wire:model.live="fillFilter" label="Status" class="min-w-52">
+            <flux:select.option value="">All</flux:select.option>
+            <flux:select.option value="red">Red (under 50%)</flux:select.option>
+            <flux:select.option value="orange">Orange (50–60% and 80%+)</flux:select.option>
+            <flux:select.option value="green">Green (60–80%)</flux:select.option>
+        </flux:select>
     </div>
 
     <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <flux:card><flux:subheading>Revenue</flux:subheading><flux:heading size="xl">€ {{ number_format($this->totals->revenue, 2) }}</flux:heading></flux:card>
         <flux:card><flux:subheading>Impressions</flux:subheading><flux:heading size="xl">{{ number_format($this->totals->impressions) }}</flux:heading></flux:card>
         <flux:card><flux:subheading>eCPM</flux:subheading><flux:heading size="xl">{{ $this->totals->ecpm !== null ? '€ '.number_format($this->totals->ecpm, 2) : '—' }}</flux:heading></flux:card>
-        <flux:card><flux:subheading>Fill rate</flux:subheading><flux:heading size="xl">{{ $this->totals->fill !== null ? number_format($this->totals->fill * 100, 1).'%' : '—' }}</flux:heading></flux:card>
+        <flux:card><flux:subheading>Fill rate</flux:subheading><flux:heading size="xl" class="flex items-center gap-2">{{ $this->totals->fill !== null ? number_format($this->totals->fill * 100, 1).'%' : '—' }}</flux:heading></flux:card>
     </div>
 
     <flux:table>
@@ -155,6 +134,7 @@ new class extends Component {
             <flux:table.column align="end" sortable :sorted="$sortBy === 'impressions'" :direction="$sortDirection" wire:click="sort('impressions')">Impressions</flux:table.column>
             <flux:table.column align="end" sortable :sorted="$sortBy === 'requests'" :direction="$sortDirection" wire:click="sort('requests')">Requests</flux:table.column>
             <flux:table.column align="end" sortable :sorted="$sortBy === 'fill'" :direction="$sortDirection" wire:click="sort('fill')">Fill</flux:table.column>
+            <flux:table.column align="center">Status</flux:table.column>
             <flux:table.column align="end" sortable :sorted="$sortBy === 'ecpm'" :direction="$sortDirection" wire:click="sort('ecpm')">eCPM</flux:table.column>
             <flux:table.column align="end" sortable :sorted="$sortBy === 'unruled'" :direction="$sortDirection" wire:click="sort('unruled')">No-rule requests</flux:table.column>
         </flux:table.columns>
@@ -171,12 +151,13 @@ new class extends Component {
                     <flux:table.cell align="end">{{ number_format($row->impressions) }}</flux:table.cell>
                     <flux:table.cell align="end">{{ number_format($row->requests) }}</flux:table.cell>
                     <flux:table.cell align="end">{{ $row->fill !== null ? number_format($row->fill * 100, 1).'%' : '—' }}</flux:table.cell>
+                    <flux:table.cell align="center"><span @class(['inline-block size-2.5 shrink-0 rounded-full', 'bg-red-500' => $row->fillColor === 'red', 'bg-orange-500' => $row->fillColor === 'orange', 'bg-green-500' => $row->fillColor === 'green', 'bg-zinc-300 dark:bg-zinc-600' => $row->fillColor === null]) title="Fill rate"></span></flux:table.cell>
                     <flux:table.cell align="end">{{ $row->ecpm !== null ? '€ '.number_format($row->ecpm, 2) : '—' }}</flux:table.cell>
                     <flux:table.cell align="end">{{ number_format($row->unruled) }}</flux:table.cell>
                 </flux:table.row>
                 @if ($selected === $row->domain)
                     <flux:table.row :key="$row->domain.'-rules'" class="bg-zinc-50 dark:bg-white/5">
-                        <flux:table.cell colspan="7" class="!py-3 !pl-10">
+                        <flux:table.cell colspan="8" class="!py-3 !pl-10">
                             <table class="w-full text-sm">
                                 <thead>
                                     <tr class="text-left text-zinc-500">
@@ -186,7 +167,6 @@ new class extends Component {
                                         <th class="py-1 text-end font-medium">Impressions</th>
                                         <th class="py-1 text-end font-medium">Requests</th>
                                         <th class="py-1 text-end font-medium">eCPM</th>
-                                        <th class="py-1 text-end font-medium">eCPM / floor</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -198,13 +178,6 @@ new class extends Component {
                                             <td class="py-1.5 text-end">{{ number_format($b->impressions) }}</td>
                                             <td class="py-1.5 text-end">{{ number_format($b->requests) }}</td>
                                             <td class="py-1.5 text-end">{{ $b->ecpm !== null ? '€ '.number_format($b->ecpm, 2) : '—' }}</td>
-                                            <td class="py-1.5 text-end">
-                                                @if ($b->headroom !== null)
-                                                    <flux:badge size="sm" :color="$b->headroom >= 3 ? 'amber' : 'zinc'">{{ number_format($b->headroom, 1) }}×</flux:badge>
-                                                @else
-                                                    —
-                                                @endif
-                                            </td>
                                         </tr>
                                     @endforeach
                                 </tbody>
