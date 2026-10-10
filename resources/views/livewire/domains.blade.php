@@ -158,7 +158,7 @@ new #[Title('Domains')] class extends Component {
                 </flux:table.row>
                 @if ($selected === $row->domain)
                     <flux:table.row :key="$row->domain.'-rules'" class="bg-zinc-50 dark:bg-white/5">
-                        <flux:table.cell colspan="8" class="!py-3 !pl-10">
+                        <flux:table.cell colspan="8" class="!py-3 !pl-10 !pr-10">
                             <table class="w-full text-sm">
                                 <thead>
                                     <tr class="text-left text-zinc-500">
