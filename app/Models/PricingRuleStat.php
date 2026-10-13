@@ -15,6 +15,7 @@ class PricingRuleStat extends Model
         return [
             'date' => 'date',
             'revenue' => 'decimal:4',
+            'ecpm' => 'decimal:4',
         ];
     }
 }

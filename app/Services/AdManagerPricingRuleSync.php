@@ -37,6 +37,7 @@ class AdManagerPricingRuleSync
         Metric::AD_EXCHANGE_REVENUE,
         Metric::AD_EXCHANGE_IMPRESSIONS,
         Metric::AD_EXCHANGE_TOTAL_REQUESTS,
+        Metric::AD_EXCHANGE_TOTAL_REQUEST_ECPM,
     ];
 
     public function __construct(private ?ReportServiceClient $client = null) {}
@@ -97,10 +98,11 @@ class AdManagerPricingRuleSync
                         'revenue' => round($metrics[0]->getDoubleValue(), 4),
                         'impressions' => $metrics[1]->getIntValue(),
                         'requests' => $metrics[2]->getIntValue(),
+                        'ecpm' => round($metrics[3]->getDoubleValue(), 4),
                         'currency' => config('admanager.currency'),
                     ]],
                     ['date', 'os', 'rule_name', 'site', 'ad_unit'],
-                    ['revenue', 'impressions', 'requests', 'currency'],
+                    ['revenue', 'impressions', 'requests', 'ecpm', 'currency'],
                 );
                 $rows++;
             }

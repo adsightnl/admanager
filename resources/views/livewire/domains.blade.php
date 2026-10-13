@@ -96,6 +96,7 @@ new #[Title('Domains')] class extends Component {
                     'impressions' => $impressions,
                     'requests' => $requests,
                     'ecpm' => $ecpm,
+                    'requestEcpm' => $requests > 0 ? (float) $g->sum('ecpm_weighted') / $requests : null,
                     'headroom' => $ecpm !== null && $floor > 0 ? $ecpm / (float) $floor : null,
                 ];
             })
@@ -137,6 +138,7 @@ new #[Title('Domains')] class extends Component {
             <flux:table.column align="end" sortable :sorted="$sortBy === 'fill'" :direction="$sortDirection" wire:click="sort('fill')">Fill</flux:table.column>
             <flux:table.column align="center">Status</flux:table.column>
             <flux:table.column align="end" sortable :sorted="$sortBy === 'ecpm'" :direction="$sortDirection" wire:click="sort('ecpm')">eCPM</flux:table.column>
+            <flux:table.column align="end" sortable :sorted="$sortBy === 'requestEcpm'" :direction="$sortDirection" wire:click="sort('requestEcpm')">Request eCPM</flux:table.column>
             <flux:table.column align="end" sortable :sorted="$sortBy === 'unruled'" :direction="$sortDirection" wire:click="sort('unruled')">No-rule requests</flux:table.column>
         </flux:table.columns>
         <flux:table.rows>
@@ -154,11 +156,12 @@ new #[Title('Domains')] class extends Component {
                     <flux:table.cell align="end">{{ $row->fill !== null ? number_format($row->fill * 100, 1).'%' : '—' }}</flux:table.cell>
                     <flux:table.cell align="center"><span @class(['inline-block size-2.5 shrink-0 rounded-full', 'bg-red-500' => $row->fillColor === 'red', 'bg-orange-500' => $row->fillColor === 'orange', 'bg-green-500' => $row->fillColor === 'green', 'bg-zinc-300 dark:bg-zinc-600' => $row->fillColor === null]) title="Fill rate"></span></flux:table.cell>
                     <flux:table.cell align="end">{{ $row->ecpm !== null ? '€ '.number_format($row->ecpm, 2) : '—' }}</flux:table.cell>
+                    <flux:table.cell align="end">{{ $row->requestEcpm !== null ? '€ '.number_format($row->requestEcpm, 2) : '—' }}</flux:table.cell>
                     <flux:table.cell align="end">{{ number_format($row->unruled) }}</flux:table.cell>
                 </flux:table.row>
                 @if ($selected === $row->domain)
                     <flux:table.row :key="$row->domain.'-rules'" class="bg-zinc-50 dark:bg-white/5">
-                        <flux:table.cell colspan="8" class="!py-3 !pl-10 !pr-10">
+                        <flux:table.cell colspan="9" class="!py-3 !pl-10 !pr-10">
                             <table class="w-full text-sm">
                                 <thead>
                                     <tr class="text-left text-zinc-500">
@@ -168,6 +171,7 @@ new #[Title('Domains')] class extends Component {
                                         <th class="py-1 text-end font-medium">Impressions</th>
                                         <th class="py-1 text-end font-medium">Requests</th>
                                         <th class="py-1 text-end font-medium">eCPM</th>
+                                        <th class="py-1 text-end font-medium">Request eCPM</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -179,6 +183,7 @@ new #[Title('Domains')] class extends Component {
                                             <td class="py-1.5 text-end">{{ number_format($b->impressions) }}</td>
                                             <td class="py-1.5 text-end">{{ number_format($b->requests) }}</td>
                                             <td class="py-1.5 text-end">{{ $b->ecpm !== null ? '€ '.number_format($b->ecpm, 2) : '—' }}</td>
+                                            <td class="py-1.5 text-end">{{ $b->requestEcpm !== null ? '€ '.number_format($b->requestEcpm, 2) : '—' }}</td>
                                         </tr>
                                     @endforeach
                                 </tbody>

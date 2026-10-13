@@ -32,7 +32,7 @@ class DomainPerformance
     public function stats(string $from, string $to): Collection
     {
         return PricingRuleStat::query()
-            ->selectRaw('site, rule_name, SUM(revenue) as revenue, SUM(impressions) as impressions, SUM(requests) as requests')
+            ->selectRaw('site, rule_name, SUM(revenue) as revenue, SUM(impressions) as impressions, SUM(requests) as requests, SUM(ecpm * requests) as ecpm_weighted')
             ->whereDate('date', '>=', $from)
             ->whereDate('date', '<=', $to)
             ->groupBy('site', 'rule_name')
@@ -99,6 +99,7 @@ class DomainPerformance
             'impressions' => $impressions,
             'requests' => $requests,
             'ecpm' => $impressions > 0 ? $revenue / $impressions * 1000 : null,
+            'requestEcpm' => $requests > 0 ? (float) $rows->sum('ecpm_weighted') / $requests : null,
             'fill' => $fill,
             'fillColor' => self::fillColor($fill),
         ];

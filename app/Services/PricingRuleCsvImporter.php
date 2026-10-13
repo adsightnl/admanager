@@ -10,7 +10,7 @@ use InvalidArgumentException;
 /**
  * Imports an Ad Manager historical report exported as CSV with the columns:
  * Operating system category, Pricing rule, Site, Ad unit, Ad Exchange revenue,
- * Ad Exchange match rate, Ad Exchange impressions, Ad Exchange total requests.
+ * Ad Exchange match rate, Ad Exchange impressions, Ad Exchange total requests, Ad Exchange total request eCPM.
  */
 class PricingRuleCsvImporter
 {
@@ -49,6 +49,7 @@ class PricingRuleCsvImporter
             }
 
             [$os, $rule, $site, $adUnit, $revenue, , $impressions, $requests] = $line;
+            $ecpm = $line[8] ?? 0;
 
             if ($rule !== PricingRuleStat::NO_RULE && ! PricingRule::where('name', $rule)->exists()) {
                 PricingRule::create(['name' => $rule, 'currency' => $currency] + PricingRule::parseName($rule));
@@ -58,11 +59,11 @@ class PricingRuleCsvImporter
             PricingRuleStat::upsert(
                 [[
                     'date' => $date, 'os' => $os, 'rule_name' => $rule, 'site' => $site, 'ad_unit' => $adUnit,
-                    'revenue' => $revenue, 'impressions' => (int) $impressions, 'requests' => (int) $requests,
+                    'revenue' => $revenue, 'impressions' => (int) $impressions, 'requests' => (int) $requests, 'ecpm' => $ecpm,
                     'currency' => $currency,
                 ]],
                 ['date', 'os', 'rule_name', 'site', 'ad_unit'],
-                ['revenue', 'impressions', 'requests', 'currency'],
+                ['revenue', 'impressions', 'requests', 'ecpm', 'currency'],
             );
             $rows++;
         }
