@@ -8,3 +8,6 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote')->hourly();
 
 Schedule::command('pricing-rules:sync')->dailyAt('07:00')->timezone(config('admanager.time_zone'));
+
+// Refresh today's running totals; the 07:00 run above finalises yesterday.
+Schedule::command('pricing-rules:sync --date=today')->hourly()->timezone(config('admanager.time_zone'));

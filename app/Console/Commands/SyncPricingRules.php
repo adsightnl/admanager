@@ -14,7 +14,7 @@ class SyncPricingRules extends Command
 
     public function handle(AdManagerPricingRuleSync $sync): int
     {
-        $day = $this->option('date') ? Carbon::parse($this->option('date')) : Carbon::yesterday(config('admanager.time_zone'));
+        $day = $this->option('date') ? Carbon::parse($this->option('date'), config('admanager.time_zone')) : Carbon::yesterday(config('admanager.time_zone'));
 
         $result = $sync->sync($day);
 
