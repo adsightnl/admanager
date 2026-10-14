@@ -112,7 +112,7 @@ new #[Title('Domains')] class extends Component {
     </div>
 
     <div class="flex flex-wrap items-end gap-4">
-        <flux:date-picker mode="range" wire:model.live="range" locale="nl-NL" start-day="1" with-presets presets="yesterday last7Days thisMonth lastMonth allTime" label="Period" />
+        <flux:date-picker mode="range" wire:model.live="range" locale="nl-NL" start-day="1" with-presets presets="today yesterday last7Days thisMonth lastMonth allTime" label="Period" />
         <flux:input wire:model.live.debounce.300ms="search" icon="magnifying-glass" placeholder="Search domain" label="Domain" />
         <flux:select wire:model.live="fillFilter" label="Status" class="min-w-52">
             <flux:select.option value="">All</flux:select.option>
