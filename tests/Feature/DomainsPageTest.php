@@ -91,10 +91,10 @@ class DomainsPageTest extends TestCase
 
         $this->assertNull($band(null));
         $this->assertSame('red', $band(0.0));
-        $this->assertSame('red', $band(0.499));
-        $this->assertSame('orange', $band(0.50));
-        $this->assertSame('orange', $band(0.599));
-        $this->assertSame('green', $band(0.60));
+        $this->assertSame('red', $band(0.299));
+        $this->assertSame('orange', $band(0.30));
+        $this->assertSame('orange', $band(0.449));
+        $this->assertSame('green', $band(0.45));
         $this->assertSame('green', $band(0.799));
         $this->assertSame('orange', $band(0.80));
         $this->assertSame('orange', $band(1.0));
@@ -102,8 +102,8 @@ class DomainsPageTest extends TestCase
 
     public function test_fill_filter_sits_with_search_and_limits_domains(): void
     {
-        // fill: red.nl 40%, orange.nl 55%, green.nl 70%, high.nl 90%
-        foreach (['red.nl' => 40, 'orange.nl' => 55, 'green.nl' => 70, 'high.nl' => 90] as $site => $pct) {
+        // fill: red.nl 20%, orange.nl 40%, green.nl 70%, high.nl 90%
+        foreach (['red.nl' => 20, 'orange.nl' => 40, 'green.nl' => 70, 'high.nl' => 90] as $site => $pct) {
             $this->stat($site, 'AS_0.30_mobile', 1, $pct, 100);
         }
         $this->actingAs(User::factory()->create());
@@ -121,6 +121,6 @@ class DomainsPageTest extends TestCase
 
         $component->set('fillFilter', 'orange')->set('search', 'high');
         $this->assertSame(['high.nl'], $names());
-        $component->assertSeeHtml('bg-orange-500');
+        $component->assertSeeHtml('bg-orange-400');
     }
 }

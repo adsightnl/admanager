@@ -128,7 +128,7 @@ new #[Layout('components.layouts.app')] #[Title('Dashboard')] class extends Comp
 @php
     $s = $this->summary;
     $dot = fn (?string $c) => match ($c) {
-        'red' => 'bg-red-500', 'orange' => 'bg-orange-500', 'green' => 'bg-green-500', default => 'bg-zinc-300 dark:bg-zinc-600',
+        'red' => 'bg-red-500', 'orange' => 'bg-orange-400', 'green' => 'bg-green-500', default => 'bg-zinc-300 dark:bg-zinc-600',
     };
     $kpis = [
         ['label' => 'Revenue', 'value' => '€ '.number_format($s->revenue, 2), 'change' => $this->change('revenue')],
@@ -224,7 +224,7 @@ new #[Layout('components.layouts.app')] #[Title('Dashboard')] class extends Comp
             {{-- Domains by fill-rate colour --}}
             <flux:card class="flex flex-col gap-3">
                 <flux:heading>Domains by fill rate</flux:heading>
-                @foreach (['red' => 'Under 50%', 'orange' => '50–60% and 80%+', 'green' => '60–80%'] as $band => $label)
+                @foreach (['red' => 'Under 30%', 'orange' => '30–45% and 80%+', 'green' => '45–80%'] as $band => $label)
                     <a href="{{ route('domains', ['fill' => $band]) }}" wire:navigate class="flex items-center justify-between rounded-lg px-2 py-1.5 hover:bg-zinc-50 dark:hover:bg-white/5">
                         <span class="flex items-center gap-2">
                             <span class="inline-block size-2.5 shrink-0 rounded-full {{ $dot($band) }}"></span>

@@ -116,9 +116,9 @@ new #[Title('Domains')] class extends Component {
         <flux:input wire:model.live.debounce.300ms="search" icon="magnifying-glass" placeholder="Search domain" label="Domain" />
         <flux:select wire:model.live="fillFilter" label="Status" class="min-w-52">
             <flux:select.option value="">All</flux:select.option>
-            <flux:select.option value="red">Red (under 50%)</flux:select.option>
-            <flux:select.option value="orange">Orange (50–60% and 80%+)</flux:select.option>
-            <flux:select.option value="green">Green (60–80%)</flux:select.option>
+            <flux:select.option value="red">Red (under 30%)</flux:select.option>
+            <flux:select.option value="orange">Orange (30–45% and 80%+)</flux:select.option>
+            <flux:select.option value="green">Green (45–80%)</flux:select.option>
         </flux:select>
     </div>
 
@@ -154,7 +154,7 @@ new #[Title('Domains')] class extends Component {
                     <flux:table.cell align="end">{{ number_format($row->impressions) }}</flux:table.cell>
                     <flux:table.cell align="end">{{ number_format($row->requests) }}</flux:table.cell>
                     <flux:table.cell align="end">{{ $row->fill !== null ? number_format($row->fill * 100, 1).'%' : '—' }}</flux:table.cell>
-                    <flux:table.cell align="center"><span @class(['inline-block size-2.5 shrink-0 rounded-full', 'bg-red-500' => $row->fillColor === 'red', 'bg-orange-500' => $row->fillColor === 'orange', 'bg-green-500' => $row->fillColor === 'green', 'bg-zinc-300 dark:bg-zinc-600' => $row->fillColor === null]) title="Fill rate"></span></flux:table.cell>
+                    <flux:table.cell align="center"><span @class(['inline-block size-2.5 shrink-0 rounded-full', 'bg-red-500' => $row->fillColor === 'red', 'bg-orange-400' => $row->fillColor === 'orange', 'bg-green-500' => $row->fillColor === 'green', 'bg-zinc-300 dark:bg-zinc-600' => $row->fillColor === null]) title="Fill rate"></span></flux:table.cell>
                     <flux:table.cell align="end">{{ $row->ecpm !== null ? '€ '.number_format($row->ecpm, 2) : '—' }}</flux:table.cell>
                     <flux:table.cell align="end">{{ $row->requestEcpm !== null ? '€ '.number_format($row->requestEcpm, 2) : '—' }}</flux:table.cell>
                     <flux:table.cell align="end">{{ number_format($row->unruled) }}</flux:table.cell>

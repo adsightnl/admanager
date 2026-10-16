@@ -11,13 +11,13 @@ use Illuminate\Support\Collection;
  */
 class DomainPerformance
 {
-    /** Fill-rate colour band: <50% red, 50-60% orange, 60-80% green, 80%+ orange. */
+    /** Fill-rate colour band: <30% red, 30-45% orange, 45-80% green, 80%+ orange. */
     public static function fillColor(?float $fill): ?string
     {
         return match (true) {
             $fill === null => null,
-            $fill < 0.50 => 'red',
-            $fill < 0.60 => 'orange',
+            $fill < 0.30 => 'red',
+            $fill < 0.45 => 'orange',
             $fill < 0.80 => 'green',
             default => 'orange',
         };
