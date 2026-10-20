@@ -2,6 +2,7 @@
 
 use App\Models\DeviceStat;
 use App\Services\DomainPerformance;
+use App\Livewire\Concerns\HasPeriodShortcuts;
 use Flux\DateRange;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -11,6 +12,8 @@ use Livewire\Attributes\Url;
 use Livewire\Volt\Component;
 
 new #[Title('Devices')] class extends Component {
+    use HasPeriodShortcuts;
+
     public ?DateRange $range = null;
 
     /** '' (all) or a normalised domain. */
@@ -98,7 +101,7 @@ new #[Title('Devices')] class extends Component {
     </div>
 
     <div class="flex flex-wrap items-end gap-4">
-        <flux:date-picker mode="range" wire:model.live="range" locale="nl-NL" start-day="1" with-presets presets="today yesterday last7Days thisMonth lastMonth allTime" label="Period" />
+        <flux:date-picker mode="range" wire:model.live="range" locale="nl-NL" start-day="1" with-presets presets="today yesterday last7Days last30Days thisMonth lastMonth allTime" label="Period" />
         <flux:select wire:model.live="domain" label="Domain" class="min-w-52">
             <flux:select.option value="">All domains</flux:select.option>
             @foreach ($this->domains as $d)

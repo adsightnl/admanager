@@ -49,6 +49,54 @@ class DevicesPageTest extends TestCase
         $this->assertSame(15.0, $component->instance()->totals->revenue);
     }
 
+    public function test_last_days_shortcuts_end_yesterday(): void
+    {
+        Carbon::setTestNow('2026-10-20 12:00:00');
+        $this->actingAs(User::factory()->create());
+
+        $component = Volt::test('devices')->call('lastDays', 7);
+        $this->assertSame('2026-10-13', $component->get('range')->start()->toDateString());
+        $this->assertSame('2026-10-19', $component->get('range')->end()->toDateString());
+
+        $component->call('lastDays', 30);
+        $this->assertSame('2026-09-20', $component->get('range')->start()->toDateString());
+        $this->assertSame('2026-10-19', $component->get('range')->end()->toDateString());
+    }
+
+    public function test_rolling_picker_presets_end_yesterday(): void
+    {
+        Carbon::setTestNow('2026-10-20 12:00:00');
+        $this->actingAs(User::factory()->create());
+
+        $component = Volt::test('devices')->set('range', ['start' => '2026-10-14', 'end' => '2026-10-20', 'preset' => 'last7Days']);
+        $this->assertSame('2026-10-13', $component->get('range')->start()->toDateString());
+        $this->assertSame('2026-10-19', $component->get('range')->end()->toDateString());
+
+        $component->set('range', ['start' => '2026-09-21', 'end' => '2026-10-20', 'preset' => 'last30Days']);
+        $this->assertSame('2026-09-20', $component->get('range')->start()->toDateString());
+        $this->assertSame('2026-10-19', $component->get('range')->end()->toDateString());
+    }
+
+    public function test_this_month_shortcut_ends_yesterday(): void
+    {
+        $this->actingAs(User::factory()->create());
+
+        Carbon::setTestNow('2026-10-20 12:00:00');
+        $component = Volt::test('devices')->call('thisMonth');
+        $this->assertSame('2026-10-01', $component->get('range')->start()->toDateString());
+        $this->assertSame('2026-10-19', $component->get('range')->end()->toDateString());
+
+        // The picker's "This month" preset is cut off at yesterday as well.
+        Carbon::setTestNow('2026-10-20 12:00:00');
+        $picked = Volt::test('devices')->set('range', ['start' => '2026-10-01', 'end' => '2026-10-31', 'preset' => 'thisMonth']);
+        $this->assertSame('2026-10-19', $picked->get('range')->end()->toDateString());
+
+        Carbon::setTestNow('2026-11-01 12:00:00');
+        $component->call('thisMonth');
+        $this->assertSame('2026-10-01', $component->get('range')->start()->toDateString());
+        $this->assertSame('2026-10-31', $component->get('range')->end()->toDateString());
+    }
+
     public function test_page_requires_login(): void
     {
         $this->get('/devices')->assertRedirect('/login');

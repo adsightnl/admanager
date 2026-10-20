@@ -2,6 +2,7 @@
 
 use App\Services\DomainPerformance;
 use Carbon\CarbonInterface;
+use App\Livewire\Concerns\HasPeriodShortcuts;
 use Flux\DateRange;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -11,6 +12,8 @@ use Livewire\Attributes\Title;
 use Livewire\Volt\Component;
 
 new #[Layout('components.layouts.app')] #[Title('Dashboard')] class extends Component {
+    use HasPeriodShortcuts;
+
     public ?DateRange $range = null;
 
     public function mount(): void
@@ -154,7 +157,7 @@ new #[Layout('components.layouts.app')] #[Title('Dashboard')] class extends Comp
                 @endif
             </flux:subheading>
         </div>
-        <flux:date-picker mode="range" wire:model.live="range" locale="nl-NL" start-day="1" with-presets presets="today yesterday last7Days thisMonth lastMonth allTime" label="Period" />
+        <flux:date-picker mode="range" wire:model.live="range" locale="nl-NL" start-day="1" with-presets presets="today yesterday last7Days last30Days thisMonth lastMonth allTime" label="Period" />
     </div>
 
     @if ($s->requests === 0)

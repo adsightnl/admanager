@@ -3,6 +3,7 @@
 use App\Models\PricingRule;
 use App\Models\PricingRuleStat;
 use App\Services\DomainPerformance;
+use App\Livewire\Concerns\HasPeriodShortcuts;
 use Flux\DateRange;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -12,6 +13,8 @@ use Livewire\Attributes\Title;
 use Livewire\Volt\Component;
 
 new #[Title('Domains')] class extends Component {
+    use HasPeriodShortcuts;
+
     public ?DateRange $range = null;
 
     #[Url(as: 'q')]
@@ -161,7 +164,7 @@ new #[Title('Domains')] class extends Component {
     </div>
 
     <div class="flex flex-wrap items-end gap-4">
-        <flux:date-picker mode="range" wire:model.live="range" locale="nl-NL" start-day="1" with-presets presets="today yesterday last7Days thisMonth lastMonth allTime" label="Period" />
+        <flux:date-picker mode="range" wire:model.live="range" locale="nl-NL" start-day="1" with-presets presets="today yesterday last7Days last30Days thisMonth lastMonth allTime" label="Period" />
         <flux:input wire:model.live.debounce.300ms="search" icon="magnifying-glass" placeholder="Search domain" label="Domain" />
         <flux:select wire:model.live="rule" label="Pricing rule" class="min-w-52">
             <flux:select.option value="">All rules</flux:select.option>
