@@ -144,7 +144,7 @@ class DomainsPageTest extends TestCase
         $this->assertSame([], $component->instance()->selectedChartData);
         $component->call('select', 'b.nl');
         $this->assertSame(100.0, $component->instance()->selectedChartData[0]['revenue']);
-        $component->assertSee('Daily trend — b.nl');
+        $component->assertSee('Daily trend — b.nl')->assertSeeHtml('interval="day"');
 
         $component->set('search', 'a.nl');
         $this->assertSame(10.0, $component->instance()->chartData[0]['revenue']);

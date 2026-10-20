@@ -20,8 +20,9 @@
                 <flux:chart.line :field="$field.'Index'" :class="$color" />
                 <flux:chart.point :field="$field.'Index'" :class="$color" r="3" />
             @endforeach
-            <flux:chart.axis axis="x" field="date">
-                <flux:chart.axis.tick :format="['day' => '2-digit', 'month' => '2-digit']" />
+            {{-- Short periods would otherwise get weekday + hour labels; force one label per day. --}}
+            <flux:chart.axis axis="x" field="date" :format="['day' => '2-digit', 'month' => '2-digit']" :interval="count($data) <= 14 ? 'day' : null">
+                <flux:chart.axis.tick />
                 <flux:chart.axis.line />
             </flux:chart.axis>
             <flux:chart.axis axis="y" tick-suffix="%">
