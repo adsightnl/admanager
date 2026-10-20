@@ -15,6 +15,7 @@
                 <flux:navlist.group heading="Platform" class="grid">
                     <flux:navlist.item icon="home" :href="route('dashboard')" :current="request()->routeIs('dashboard')" wire:navigate>Dashboard</flux:navlist.item>
                     <flux:navlist.item icon="globe-alt" :href="route('domains')" :current="request()->routeIs('domains')" wire:navigate>Domains</flux:navlist.item>
+                    <flux:navlist.item icon="device-phone-mobile" :href="route('devices')" :current="request()->routeIs('devices')" wire:navigate>Devices</flux:navlist.item>
                     <flux:navlist.item icon="users" :href="route('team')" :current="request()->routeIs('team')" wire:navigate>Team</flux:navlist.item>
                 </flux:navlist.group>
             </flux:navlist>

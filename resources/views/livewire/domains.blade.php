@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\PricingRule;
+use App\Models\PricingRuleStat;
 use App\Services\DomainPerformance;
 use Flux\DateRange;
 use Illuminate\Support\Carbon;
@@ -20,11 +21,18 @@ new #[Title('Domains')] class extends Component {
     #[Url(as: 'fill')]
     public string $fillFilter = '';
 
+    /** '' (all) or a pricing rule name. */
+    #[Url(as: 'rule')]
+    public string $rule = '';
+
     public string $sortBy = 'revenue';
 
     public string $sortDirection = 'desc';
 
     public ?string $selected = null;
+
+    /** Pricing rule for the expanded domain's chart; '' means all rules. */
+    public string $selectedRule = '';
 
     public function mount(): void
     {
@@ -41,6 +49,7 @@ new #[Title('Domains')] class extends Component {
     public function select(string $domain): void
     {
         $this->selected = $this->selected === $domain ? null : $domain;
+        $this->selectedRule = '';
     }
 
     private function from(): string
@@ -56,7 +65,7 @@ new #[Title('Domains')] class extends Component {
     #[Computed]
     public function rows(): Collection
     {
-        return app(DomainPerformance::class)->domains($this->from(), $this->to())
+        return app(DomainPerformance::class)->domains($this->from(), $this->to(), $this->rule ?: null)
             ->when($this->search !== '', fn ($c) => $c->filter(fn ($r) => str_contains($r->domain, strtolower(trim($this->search)))))
             ->when($this->fillFilter !== '', fn ($c) => $c->filter(fn ($r) => $r->fillColor === $this->fillFilter))
             ->sortBy(fn ($r) => $r->{$this->sortBy} ?? 0, SORT_REGULAR, $this->sortDirection === 'desc')
@@ -64,9 +73,49 @@ new #[Title('Domains')] class extends Component {
     }
 
     #[Computed]
+    public function rules(): Collection
+    {
+        return app(DomainPerformance::class)->rules($this->from(), $this->to());
+    }
+
+    #[Computed]
+    public function chartData(): array
+    {
+        return $this->dailySeries($this->rows->pluck('domain')->all());
+    }
+
+    /** Daily points for the expanded domain. */
+    #[Computed]
+    public function selectedChartData(): array
+    {
+        return $this->selected === null ? [] : $this->dailySeries([$this->selected], $this->selectedRule ?: null);
+    }
+
+    /** @param  list<string>  $domains */
+    private function dailySeries(array $domains, ?string $rule = null): array
+    {
+        $days = app(DomainPerformance::class)
+            ->daily($this->from(), $this->to(), $domains, $rule ?? ($this->rule ?: null))
+            ->map(fn ($d) => [
+                'date' => $d->date,
+                'revenue' => round($d->revenue, 2),
+                'fill' => round(($d->fill ?? 0) * 100, 1),
+                'requestEcpm' => round($d->requestEcpm ?? 0, 4),
+            ]);
+
+        $max = fn (string $field) => max($days->max($field), 0.0001);
+
+        return $days->map(fn ($d) => $d + [
+            'revenueIndex' => round($d['revenue'] / $max('revenue') * 100, 1),
+            'fillIndex' => round($d['fill'] / $max('fill') * 100, 1),
+            'requestEcpmIndex' => round($d['requestEcpm'] / $max('requestEcpm') * 100, 1),
+        ])->values()->all();
+    }
+
+    #[Computed]
     public function totals(): object
     {
-        return app(DomainPerformance::class)->summary($this->from(), $this->to());
+        return app(DomainPerformance::class)->summary($this->from(), $this->to(), $this->rule ?: null);
     }
 
     /** Per-rule breakdown for the selected domain. */
@@ -79,7 +128,7 @@ new #[Title('Domains')] class extends Component {
 
         $floors = PricingRule::pluck('floor', 'name');
 
-        return app(DomainPerformance::class)->stats($this->from(), $this->to())
+        return app(DomainPerformance::class)->stats($this->from(), $this->to(), $this->rule ?: null)
             ->where('domain', $this->selected)
             ->groupBy('rule_name')
             ->map(function (Collection $g, string $rule) use ($floors) {
@@ -114,6 +163,12 @@ new #[Title('Domains')] class extends Component {
     <div class="flex flex-wrap items-end gap-4">
         <flux:date-picker mode="range" wire:model.live="range" locale="nl-NL" start-day="1" with-presets presets="today yesterday last7Days thisMonth lastMonth allTime" label="Period" />
         <flux:input wire:model.live.debounce.300ms="search" icon="magnifying-glass" placeholder="Search domain" label="Domain" />
+        <flux:select wire:model.live="rule" label="Pricing rule" class="min-w-52">
+            <flux:select.option value="">All rules</flux:select.option>
+            @foreach ($this->rules as $r)
+                <flux:select.option :value="$r">{{ $r }}</flux:select.option>
+            @endforeach
+        </flux:select>
         <flux:select wire:model.live="fillFilter" label="Status" class="min-w-52">
             <flux:select.option value="">All</flux:select.option>
             <flux:select.option value="red">Red (under 30%)</flux:select.option>
@@ -128,6 +183,14 @@ new #[Title('Domains')] class extends Component {
         <flux:card><flux:subheading>eCPM</flux:subheading><flux:heading size="xl">{{ $this->totals->ecpm !== null ? '€ '.number_format($this->totals->ecpm, 2) : '—' }}</flux:heading></flux:card>
         <flux:card><flux:subheading>Fill rate</flux:subheading><flux:heading size="xl" class="flex items-center gap-2">{{ $this->totals->fill !== null ? number_format($this->totals->fill * 100, 1).'%' : '—' }}</flux:heading></flux:card>
     </div>
+
+    @if (count($this->chartData) > 1)
+        @include('livewire.partials.domain-chart', ['data' => $this->chartData, 'title' => 'Daily trend — all shown domains', 'key' => 'all'])
+    @else
+        <flux:callout icon="chart-bar" variant="secondary">
+            <flux:callout.text>Pick a period of two or more days to see the daily trend.</flux:callout.text>
+        </flux:callout>
+    @endif
 
     <flux:table>
         <flux:table.columns>
@@ -162,6 +225,19 @@ new #[Title('Domains')] class extends Component {
                 @if ($selected === $row->domain)
                     <flux:table.row :key="$row->domain.'-rules'" class="bg-zinc-50 dark:bg-white/5">
                         <flux:table.cell colspan="9" class="!py-3 !pl-10 !pr-10">
+                            @if (count($this->selectedChartData) > 1 || $selectedRule !== '')
+                                <flux:select wire:model.live="selectedRule" label="Chart pricing rule" class="mb-3 max-w-xs">
+                                    <flux:select.option value="">All rules</flux:select.option>
+                                    @foreach ($this->breakdown->pluck('rule')->reject(fn ($r) => $r === PricingRuleStat::NO_RULE) as $r)
+                                        <flux:select.option :value="$r">{{ $r }}</flux:select.option>
+                                    @endforeach
+                                </flux:select>
+                                @if (count($this->selectedChartData) > 1)
+                                    <div class="mb-4">
+                                        @include('livewire.partials.domain-chart', ['data' => $this->selectedChartData, 'title' => 'Daily trend — '.$row->domain, 'key' => $row->domain])
+                                    </div>
+                                @endif
+                            @endif
                             <table class="w-full text-sm">
                                 <thead>
                                     <tr class="text-left text-zinc-500">

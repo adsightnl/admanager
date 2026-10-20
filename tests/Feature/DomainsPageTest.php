@@ -59,10 +59,11 @@ class DomainsPageTest extends TestCase
 
         $html = $component->html();
         $this->assertStringContainsString('YIT_0.10', $html);
-        $this->assertTrue(strpos($html, 'a.nl') < strpos($html, 'YIT_0.10'));
-        $this->assertTrue(strpos($html, 'YIT_0.10') < strpos($html, 'b.nl'), 'breakdown should sit directly under its domain, before the next domain');
+        $table = strpos($html, 'No-rule requests'); // skip the rule filter's options above the table
+        $this->assertTrue(strpos($html, 'a.nl', $table) < strpos($html, 'YIT_0.10', $table));
+        $this->assertTrue(strpos($html, 'YIT_0.10', $table) < strpos($html, 'b.nl', $table), 'breakdown should sit directly under its domain, before the next domain');
 
-        $component->call('select', 'a.nl')->assertDontSee('YIT_0.10');
+        $component->call('select', 'a.nl')->assertDontSee('Floor (€ CPM)');
     }
 
     public function test_date_range_picker_filters_the_period_and_is_formatted_for_dutch(): void
@@ -122,5 +123,76 @@ class DomainsPageTest extends TestCase
         $component->set('fillFilter', 'orange')->set('search', 'high');
         $this->assertSame(['high.nl'], $names());
         $component->assertSeeHtml('bg-orange-400');
+    }
+
+    public function test_daily_chart_data_follows_the_period_and_domain_filter(): void
+    {
+        foreach (['2026-10-04', '2026-10-05'] as $day) {
+            foreach (['a.nl' => 10, 'b.nl' => 100] as $site => $rev) {
+                PricingRuleStat::create(['date' => $day, 'os' => 'iOS', 'rule_name' => 'AS_0.30_mobile', 'site' => $site, 'ad_unit' => 'u', 'revenue' => $rev, 'impressions' => 50, 'requests' => 100, 'ecpm' => 2]);
+            }
+        }
+        $this->actingAs(User::factory()->create());
+
+        $component = Volt::test('domains')->set('range', ['start' => '2026-10-04', 'end' => '2026-10-05']);
+        $data = $component->instance()->chartData;
+        $this->assertSame(['2026-10-04', '2026-10-05'], array_column($data, 'date'));
+        $this->assertSame(110.0, $data[0]['revenue']);
+        $this->assertSame(50.0, $data[0]['fill']);
+        $this->assertSame(2.0, $data[0]['requestEcpm']);
+
+        $this->assertSame([], $component->instance()->selectedChartData);
+        $component->call('select', 'b.nl');
+        $this->assertSame(100.0, $component->instance()->selectedChartData[0]['revenue']);
+        $component->assertSee('Daily trend — b.nl');
+
+        $component->set('search', 'a.nl');
+        $this->assertSame(10.0, $component->instance()->chartData[0]['revenue']);
+        $component->assertSee('Daily trend');
+    }
+
+    public function test_pricing_rule_filter_limits_table_and_chart(): void
+    {
+        foreach (['AS_0.30_mobile' => 10, 'YIT_0.10' => 40] as $rule => $rev) {
+            foreach (['2026-10-04', '2026-10-05'] as $day) {
+                PricingRuleStat::create(['date' => $day, 'os' => 'iOS', 'rule_name' => $rule, 'site' => 'a.nl', 'ad_unit' => 'u', 'revenue' => $rev, 'impressions' => 50, 'requests' => 100]);
+            }
+        }
+        $this->actingAs(User::factory()->create());
+
+        $component = Volt::test('domains')->set('range', ['start' => '2026-10-04', 'end' => '2026-10-05']);
+        $this->assertSame(['AS_0.30_mobile', 'YIT_0.10'], $component->instance()->rules->all());
+        $this->assertSame(100.0, $component->instance()->rows->first()->revenue);
+
+        $component->set('rule', 'YIT_0.10');
+        $this->assertSame(80.0, $component->instance()->rows->first()->revenue);
+        $this->assertSame(40.0, $component->instance()->chartData[0]['revenue']);
+        $this->assertSame(100.0, $component->instance()->chartData[0]['revenueIndex']);
+        $this->assertSame(80.0, $component->instance()->totals->revenue);
+    }
+
+    public function test_expanded_domain_chart_can_be_limited_to_one_pricing_rule(): void
+    {
+        foreach (['AS_0.30_mobile' => 10, 'YIT_0.10' => 40] as $rule => $rev) {
+            foreach (['2026-10-04', '2026-10-05'] as $day) {
+                PricingRuleStat::create(['date' => $day, 'os' => 'iOS', 'rule_name' => $rule, 'site' => 'a.nl', 'ad_unit' => 'u', 'revenue' => $rev, 'impressions' => 50, 'requests' => 100]);
+            }
+        }
+        $this->actingAs(User::factory()->create());
+
+        $component = Volt::test('domains')->set('range', ['start' => '2026-10-04', 'end' => '2026-10-05'])->call('select', 'a.nl');
+        $this->assertSame(50.0, $component->instance()->selectedChartData[0]['revenue']);
+
+        $component->set('selectedRule', 'AS_0.30_mobile');
+        $this->assertSame(10.0, $component->instance()->selectedChartData[0]['revenue']);
+        $component->assertSee('Chart pricing rule');
+
+        // Single-day period: no chart, so no dropdown either.
+        $single = Volt::test('domains')->set('range', ['start' => '2026-10-05', 'end' => '2026-10-05'])->call('select', 'a.nl');
+        $single->assertDontSee('Chart pricing rule');
+
+        // Collapsing and re-opening resets the dropdown.
+        $component->call('select', 'a.nl')->call('select', 'a.nl');
+        $this->assertSame('', $component->get('selectedRule'));
     }
 }

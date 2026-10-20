@@ -11,3 +11,6 @@ Schedule::command('pricing-rules:sync')->dailyAt('07:00')->timezone(config('adma
 
 // Refresh today's running totals; the 07:00 run above finalises yesterday.
 Schedule::command('pricing-rules:sync --date=today')->hourly()->timezone(config('admanager.time_zone'));
+
+Schedule::command('device-stats:sync')->dailyAt('07:05')->timezone(config('admanager.time_zone'));
+Schedule::command('device-stats:sync --date=today')->hourly()->timezone(config('admanager.time_zone'));

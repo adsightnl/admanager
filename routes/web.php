@@ -13,6 +13,7 @@ Route::middleware(['auth'])->group(function () {
     Route::redirect('settings', 'settings/profile');
 
     Volt::route('domains', 'domains')->name('domains');
+    Volt::route('devices', 'devices')->name('devices');
     Volt::route('team', 'team')->name('team');
 
     Volt::route('settings/profile', 'settings.profile')->name('settings.profile');

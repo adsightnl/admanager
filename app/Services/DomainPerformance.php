@@ -29,21 +29,22 @@ class DomainPerformance
     }
 
     /** One row per site and rule for the period, with the normalised domain attached. */
-    public function stats(string $from, string $to): Collection
+    public function stats(string $from, string $to, ?string $rule = null): Collection
     {
         return PricingRuleStat::query()
             ->selectRaw('site, rule_name, SUM(revenue) as revenue, SUM(impressions) as impressions, SUM(requests) as requests, SUM(ecpm * requests) as ecpm_weighted')
             ->whereDate('date', '>=', $from)
             ->whereDate('date', '<=', $to)
+            ->when($rule, fn ($q) => $q->where('rule_name', $rule))
             ->groupBy('site', 'rule_name')
             ->get()
             ->each(fn ($r) => $r->domain = self::domain($r->site));
     }
 
     /** One row per domain. */
-    public function domains(string $from, string $to): Collection
+    public function domains(string $from, string $to, ?string $rule = null): Collection
     {
-        return $this->stats($from, $to)
+        return $this->stats($from, $to, $rule)
             ->groupBy('domain')
             ->map(function (Collection $g, string $domain) {
                 $row = $this->metrics($g);
@@ -56,27 +57,47 @@ class DomainPerformance
     }
 
     /** Totals for the period. */
-    public function summary(string $from, string $to): object
+    public function summary(string $from, string $to, ?string $rule = null): object
     {
-        return $this->metrics($this->stats($from, $to));
+        return $this->metrics($this->stats($from, $to, $rule));
     }
 
-    /** One row per day: date, revenue, impressions, requests, ecpm, fill. */
-    public function daily(string $from, string $to): Collection
+    /**
+     * One row per day: date, revenue, impressions, requests, ecpm, requestEcpm, fill.
+     *
+     * @param  list<string>|null  $domains  Limit to these normalised domains; null means all.
+     */
+    public function daily(string $from, string $to, ?array $domains = null, ?string $rule = null): Collection
     {
         return PricingRuleStat::query()
-            ->selectRaw('date(date) as day, SUM(revenue) as revenue, SUM(impressions) as impressions, SUM(requests) as requests')
+            ->selectRaw('date(date) as day, site, SUM(revenue) as revenue, SUM(impressions) as impressions, SUM(requests) as requests, SUM(ecpm * requests) as ecpm_weighted')
             ->whereDate('date', '>=', $from)
             ->whereDate('date', '<=', $to)
-            ->groupBy('day')
-            ->orderBy('day')
+            ->when($rule, fn ($q) => $q->where('rule_name', $rule))
+            ->groupBy('day', 'site')
             ->get()
-            ->map(function ($r) {
-                $row = $this->metrics(collect([$r]));
-                $row->date = $r->day;
+            ->when($domains !== null, fn ($c) => $c->filter(fn ($r) => in_array(self::domain($r->site), $domains, true)))
+            ->groupBy('day')
+            ->sortKeys()
+            ->map(function (Collection $g, string $day) {
+                $row = $this->metrics($g);
+                $row->date = $day;
 
                 return $row;
-            });
+            })
+            ->values();
+    }
+
+    /** Distinct pricing rules with stats in the period, without the "no rule" bucket. */
+    public function rules(string $from, string $to): Collection
+    {
+        return PricingRuleStat::query()
+            ->whereDate('date', '>=', $from)
+            ->whereDate('date', '<=', $to)
+            ->where('rule_name', '!=', PricingRuleStat::NO_RULE)
+            ->distinct()
+            ->orderBy('rule_name')
+            ->pluck('rule_name');
     }
 
     /** Date of the most recent imported day, or null when nothing is imported. */
