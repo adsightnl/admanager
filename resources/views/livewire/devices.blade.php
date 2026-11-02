@@ -23,7 +23,7 @@ new #[Title('Devices')] class extends Component {
     public function mount(): void
     {
         $yesterday = Carbon::yesterday(config('admanager.time_zone'))->toDateString();
-        $this->range = new DateRange($yesterday, $yesterday);
+        $this->restoreRange(new DateRange($yesterday, $yesterday));
     }
 
     /** Stats summed over the period, grouped by the given columns. */

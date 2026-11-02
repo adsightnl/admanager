@@ -19,7 +19,7 @@ new #[Layout('components.layouts.app')] #[Title('Dashboard')] class extends Comp
     public function mount(): void
     {
         $yesterday = Carbon::yesterday(config('admanager.time_zone'));
-        $this->range = new DateRange($yesterday->copy()->subDays(6)->toDateString(), $yesterday->toDateString());
+        $this->restoreRange(new DateRange($yesterday->copy()->subDays(6)->toDateString(), $yesterday->toDateString()));
     }
 
     private function start(): ?CarbonInterface

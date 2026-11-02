@@ -40,7 +40,7 @@ new #[Title('Domains')] class extends Component {
     public function mount(): void
     {
         $yesterday = Carbon::yesterday(config('admanager.time_zone'))->toDateString();
-        $this->range = new DateRange($yesterday, $yesterday);
+        $this->restoreRange(new DateRange($yesterday, $yesterday));
     }
 
     public function sort(string $column): void
