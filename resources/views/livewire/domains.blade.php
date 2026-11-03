@@ -149,6 +149,7 @@ new #[Title('Domains')] class extends Component {
                     'requests' => $requests,
                     'ecpm' => $ecpm,
                     'requestEcpm' => $requests > 0 ? (float) $g->sum('ecpm_weighted') / $requests : null,
+                    'ctr' => DomainPerformance::ctr($g),
                     'headroom' => $ecpm !== null && $floor > 0 ? $ecpm / (float) $floor : null,
                 ];
             })
@@ -180,11 +181,12 @@ new #[Title('Domains')] class extends Component {
         </flux:select>
     </div>
 
-    <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
+    <div class="grid grid-cols-2 gap-4 lg:grid-cols-5">
         <flux:card><flux:subheading>Revenue</flux:subheading><flux:heading size="xl">€ {{ number_format($this->totals->revenue, 2) }}</flux:heading></flux:card>
         <flux:card><flux:subheading>Impressions</flux:subheading><flux:heading size="xl">{{ number_format($this->totals->impressions) }}</flux:heading></flux:card>
         <flux:card><flux:subheading>eCPM</flux:subheading><flux:heading size="xl">{{ $this->totals->ecpm !== null ? '€ '.number_format($this->totals->ecpm, 2) : '—' }}</flux:heading></flux:card>
         <flux:card><flux:subheading>Fill rate</flux:subheading><flux:heading size="xl" class="flex items-center gap-2">{{ $this->totals->fill !== null ? number_format($this->totals->fill * 100, 1).'%' : '—' }}</flux:heading></flux:card>
+        <flux:card><flux:subheading>CTR</flux:subheading><flux:heading size="xl">{{ $this->totals->ctr !== null ? number_format($this->totals->ctr * 100, 2).'%' : '—' }}</flux:heading></flux:card>
     </div>
 
     @if (count($this->chartData) > 1)
@@ -205,6 +207,7 @@ new #[Title('Domains')] class extends Component {
             <flux:table.column align="center">Status</flux:table.column>
             <flux:table.column align="end" sortable :sorted="$sortBy === 'ecpm'" :direction="$sortDirection" wire:click="sort('ecpm')">eCPM</flux:table.column>
             <flux:table.column align="end" sortable :sorted="$sortBy === 'requestEcpm'" :direction="$sortDirection" wire:click="sort('requestEcpm')">Request eCPM</flux:table.column>
+            <flux:table.column align="end" sortable :sorted="$sortBy === 'ctr'" :direction="$sortDirection" wire:click="sort('ctr')">CTR</flux:table.column>
             <flux:table.column align="end" sortable :sorted="$sortBy === 'unruled'" :direction="$sortDirection" wire:click="sort('unruled')">No-rule requests</flux:table.column>
         </flux:table.columns>
         <flux:table.rows>
@@ -223,11 +226,12 @@ new #[Title('Domains')] class extends Component {
                     <flux:table.cell align="center"><span @class(['inline-block size-2.5 shrink-0 rounded-full', 'bg-red-500' => $row->fillColor === 'red', 'bg-orange-400' => $row->fillColor === 'orange', 'bg-green-500' => $row->fillColor === 'green', 'bg-zinc-300 dark:bg-zinc-600' => $row->fillColor === null]) title="Fill rate"></span></flux:table.cell>
                     <flux:table.cell align="end">{{ $row->ecpm !== null ? '€ '.number_format($row->ecpm, 2) : '—' }}</flux:table.cell>
                     <flux:table.cell align="end">{{ $row->requestEcpm !== null ? '€ '.number_format($row->requestEcpm, 2) : '—' }}</flux:table.cell>
+                    <flux:table.cell align="end">{{ $row->ctr !== null ? number_format($row->ctr * 100, 2).'%' : '—' }}</flux:table.cell>
                     <flux:table.cell align="end">{{ number_format($row->unruled) }}</flux:table.cell>
                 </flux:table.row>
                 @if ($selected === $row->domain)
                     <flux:table.row :key="$row->domain.'-rules'" class="bg-zinc-50 dark:bg-white/5">
-                        <flux:table.cell colspan="9" class="!py-3 !pl-10 !pr-10">
+                        <flux:table.cell colspan="10" class="!py-3 !pl-10 !pr-10">
                             @if (count($this->selectedChartData) > 1 || $selectedRule !== '')
                                 <flux:select wire:model.live="selectedRule" label="Chart pricing rule" class="mb-3 max-w-xs">
                                     <flux:select.option value="">All rules</flux:select.option>
@@ -251,6 +255,7 @@ new #[Title('Domains')] class extends Component {
                                         <th class="py-1 text-end font-medium">Requests</th>
                                         <th class="py-1 text-end font-medium">eCPM</th>
                                         <th class="py-1 text-end font-medium">Request eCPM</th>
+                                        <th class="py-1 text-end font-medium">CTR</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -263,6 +268,7 @@ new #[Title('Domains')] class extends Component {
                                             <td class="py-1.5 text-end">{{ number_format($b->requests) }}</td>
                                             <td class="py-1.5 text-end">{{ $b->ecpm !== null ? '€ '.number_format($b->ecpm, 2) : '—' }}</td>
                                             <td class="py-1.5 text-end">{{ $b->requestEcpm !== null ? '€ '.number_format($b->requestEcpm, 2) : '—' }}</td>
+                                            <td class="py-1.5 text-end">{{ $b->ctr !== null ? number_format($b->ctr * 100, 2).'%' : '—' }}</td>
                                         </tr>
                                     @endforeach
                                 </tbody>

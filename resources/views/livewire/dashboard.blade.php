@@ -139,6 +139,8 @@ new #[Layout('components.layouts.app')] #[Title('Dashboard')] class extends Comp
         ['label' => 'eCPM', 'value' => $s->ecpm !== null ? '€ '.number_format($s->ecpm, 2) : '—', 'change' => $this->change('ecpm')],
         ['label' => 'Fill rate', 'value' => $s->fill !== null ? number_format($s->fill * 100, 1).'%' : '—', 'change' => null,
             'points' => $this->previous && $s->fill !== null && $this->previous->fill !== null ? ($s->fill - $this->previous->fill) * 100 : null, 'dot' => $s->fillColor],
+        ['label' => 'CTR', 'value' => $s->ctr !== null ? number_format($s->ctr * 100, 2).'%' : '—', 'change' => null,
+            'points' => $this->previous && $s->ctr !== null && $this->previous->ctr !== null ? ($s->ctr - $this->previous->ctr) * 100 : null],
     ];
 @endphp
 
@@ -167,7 +169,7 @@ new #[Layout('components.layouts.app')] #[Title('Dashboard')] class extends Comp
         </flux:callout>
     @else
         {{-- KPIs, each compared with the period of equal length before it --}}
-        <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <div class="grid grid-cols-2 gap-4 lg:grid-cols-5">
             @foreach ($kpis as $k)
                 <flux:card class="flex flex-col gap-1">
                     <flux:subheading>{{ $k['label'] }}</flux:subheading>

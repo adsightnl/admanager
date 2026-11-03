@@ -32,7 +32,7 @@ class DomainPerformance
     public function stats(string $from, string $to, ?string $rule = null): Collection
     {
         return PricingRuleStat::query()
-            ->selectRaw('site, rule_name, SUM(revenue) as revenue, SUM(impressions) as impressions, SUM(requests) as requests, SUM(ecpm * requests) as ecpm_weighted')
+            ->selectRaw('site, rule_name, SUM(revenue) as revenue, SUM(impressions) as impressions, SUM(requests) as requests, SUM(ecpm * requests) as ecpm_weighted, SUM(clicks) as clicks, SUM(CASE WHEN clicks IS NOT NULL THEN impressions END) as clicked_impressions')
             ->whereDate('date', '>=', $from)
             ->whereDate('date', '<=', $to)
             ->when($rule, fn ($q) => $q->where('rule_name', $rule))
@@ -63,14 +63,14 @@ class DomainPerformance
     }
 
     /**
-     * One row per day: date, revenue, impressions, requests, ecpm, requestEcpm, fill.
+     * One row per day: date, revenue, impressions, requests, ecpm, requestEcpm, ctr, fill.
      *
      * @param  list<string>|null  $domains  Limit to these normalised domains; null means all.
      */
     public function daily(string $from, string $to, ?array $domains = null, ?string $rule = null): Collection
     {
         return PricingRuleStat::query()
-            ->selectRaw('date(date) as day, site, SUM(revenue) as revenue, SUM(impressions) as impressions, SUM(requests) as requests, SUM(ecpm * requests) as ecpm_weighted')
+            ->selectRaw('date(date) as day, site, SUM(revenue) as revenue, SUM(impressions) as impressions, SUM(requests) as requests, SUM(ecpm * requests) as ecpm_weighted, SUM(clicks) as clicks, SUM(CASE WHEN clicks IS NOT NULL THEN impressions END) as clicked_impressions')
             ->whereDate('date', '>=', $from)
             ->whereDate('date', '<=', $to)
             ->when($rule, fn ($q) => $q->where('rule_name', $rule))
@@ -108,6 +108,14 @@ class DomainPerformance
         return $latest ? substr($latest, 0, 10) : null;
     }
 
+    /** Ad Exchange CTR: clicks per impression, over rows whose clicks are known; null when none are. */
+    public static function ctr(Collection $rows): ?float
+    {
+        $impressions = (int) $rows->sum('clicked_impressions');
+
+        return $impressions > 0 ? (int) $rows->sum('clicks') / $impressions : null;
+    }
+
     private function metrics(Collection $rows): object
     {
         $revenue = (float) $rows->sum('revenue');
@@ -121,6 +129,7 @@ class DomainPerformance
             'requests' => $requests,
             'ecpm' => $impressions > 0 ? $revenue / $impressions * 1000 : null,
             'requestEcpm' => $requests > 0 ? (float) $rows->sum('ecpm_weighted') / $requests : null,
+            'ctr' => self::ctr($rows),
             'fill' => $fill,
             'fillColor' => self::fillColor($fill),
         ];

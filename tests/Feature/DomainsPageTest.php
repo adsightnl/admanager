@@ -29,6 +29,27 @@ class DomainsPageTest extends TestCase
         ]);
     }
 
+    public function test_ctr_counts_only_rows_whose_clicks_are_known(): void
+    {
+        $this->stat('a.nl', 'AS_0.30_mobile', 10, 1000, 1000);
+        PricingRuleStat::where('site', 'a.nl')->update(['clicks' => 20]);
+        $this->stat('www.a.nl', 'YIT_0.10', 5, 500, 500); // synced before clicks existed
+        $this->stat('b.nl', 'AS_0.30_mobile', 1, 100, 100);
+
+        $this->actingAs(User::factory()->create());
+
+        $component = Volt::test('domains');
+        $rows = $component->instance()->rows;
+
+        $this->assertEqualsWithDelta(20 / 1000, $rows->firstWhere('domain', 'a.nl')->ctr, 0.0001);
+        $this->assertNull($rows->firstWhere('domain', 'b.nl')->ctr);
+        $this->assertEqualsWithDelta(20 / 1000, $component->instance()->totals->ctr, 0.0001);
+
+        $component->call('select', 'a.nl');
+        $this->assertNull($component->instance()->breakdown->firstWhere('rule', 'YIT_0.10')->ctr);
+        $component->assertSee('2.00%');
+    }
+
     public function test_www_variants_are_merged_and_unruled_requests_are_counted(): void
     {
         $this->stat('a.nl', 'AS_0.30_mobile', 10, 1000, 1000);
