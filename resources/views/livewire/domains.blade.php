@@ -104,6 +104,8 @@ new #[Title('Domains')] class extends Component {
                 'revenue' => round($d->revenue, 2),
                 'fill' => round(($d->fill ?? 0) * 100, 1),
                 'requestEcpm' => round($d->requestEcpm ?? 0, 4),
+                // Null (a gap in the line) for days synced before clicks were.
+                'ctr' => $d->ctr !== null ? round($d->ctr * 100, 2) : null,
             ]);
 
         $max = fn (string $field) => max($days->max($field), 0.0001);
@@ -112,6 +114,7 @@ new #[Title('Domains')] class extends Component {
             'revenueIndex' => round($d['revenue'] / $max('revenue') * 100, 1),
             'fillIndex' => round($d['fill'] / $max('fill') * 100, 1),
             'requestEcpmIndex' => round($d['requestEcpm'] / $max('requestEcpm') * 100, 1),
+            'ctrIndex' => $d['ctr'] !== null ? round($d['ctr'] / $max('ctr') * 100, 1) : null,
         ])->values()->all();
     }
 

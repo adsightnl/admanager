@@ -50,6 +50,26 @@ class DomainsPageTest extends TestCase
         $component->assertSee('2.00%');
     }
 
+    public function test_chart_ctr_leaves_a_gap_for_days_without_clicks(): void
+    {
+        $this->stat('a.nl', 'AS_0.30_mobile', 10, 1000, 1000); // 2026-10-05, no clicks
+        PricingRuleStat::create([
+            'date' => '2026-10-04', 'os' => 'Android', 'rule_name' => 'AS_0.30_mobile', 'site' => 'a.nl', 'ad_unit' => 'u',
+            'revenue' => 10, 'impressions' => 1000, 'requests' => 1000, 'clicks' => 30,
+        ]);
+
+        $this->actingAs(User::factory()->create());
+
+        $component = Volt::test('domains')->set('range', ['start' => '2026-10-04', 'end' => '2026-10-05']);
+        [$withClicks, $without] = $component->instance()->chartData;
+
+        $this->assertSame(3.0, $withClicks['ctr']);
+        $this->assertSame(100.0, $withClicks['ctrIndex']);
+        $this->assertNull($without['ctr']);
+        $this->assertNull($without['ctrIndex']);
+        $component->assertSee('CTR (%)');
+    }
+
     public function test_www_variants_are_merged_and_unruled_requests_are_counted(): void
     {
         $this->stat('a.nl', 'AS_0.30_mobile', 10, 1000, 1000);

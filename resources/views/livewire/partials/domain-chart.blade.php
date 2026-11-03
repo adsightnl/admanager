@@ -3,7 +3,12 @@
         'revenue' => ['Revenue', 'text-blue-600 dark:text-blue-400', ['style' => 'currency', 'currency' => 'EUR']],
         'fill' => ['Fill rate (%)', 'text-orange-500 dark:text-orange-400', ['maximumFractionDigits' => 1]],
         'requestEcpm' => ['Request eCPM', 'text-emerald-600 dark:text-emerald-400', ['style' => 'currency', 'currency' => 'EUR', 'maximumFractionDigits' => 4]],
+        'ctr' => ['CTR (%)', 'text-violet-600 dark:text-violet-400', ['maximumFractionDigits' => 2]],
     ];
+    // Hide CTR when no day in the period has clicks synced yet.
+    if (collect($data)->whereNotNull('ctr')->isEmpty()) {
+        unset($series['ctr']);
+    }
 @endphp
 <flux:card wire:key="chart-{{ $key }}-{{ md5(json_encode($data)) }}">
     <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
