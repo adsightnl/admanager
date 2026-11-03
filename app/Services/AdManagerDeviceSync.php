@@ -36,6 +36,7 @@ class AdManagerDeviceSync
         Metric::AD_EXCHANGE_IMPRESSIONS,
         Metric::AD_EXCHANGE_TOTAL_REQUESTS,
         Metric::AD_EXCHANGE_TOTAL_REQUEST_ECPM,
+        Metric::AD_EXCHANGE_CLICKS,
     ];
 
     public function __construct(private ?ReportServiceClient $client = null) {}
@@ -90,10 +91,11 @@ class AdManagerDeviceSync
                         'impressions' => $metrics[1]->getIntValue(),
                         'requests' => $metrics[2]->getIntValue(),
                         'ecpm' => round($metrics[3]->getDoubleValue(), 4),
+                        'clicks' => $metrics[4]->getIntValue(),
                         'currency' => config('admanager.currency'),
                     ]],
                     ['date', 'os', 'device', 'site'],
-                    ['revenue', 'impressions', 'requests', 'ecpm', 'currency'],
+                    ['revenue', 'impressions', 'requests', 'ecpm', 'clicks', 'currency'],
                 );
                 $rows++;
             }

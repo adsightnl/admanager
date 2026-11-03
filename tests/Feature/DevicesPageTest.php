@@ -33,6 +33,22 @@ class DevicesPageTest extends TestCase
         $this->assertEqualsWithDelta(0.5, $instance->byOs->first()->fill, 0.0001);
     }
 
+    public function test_ctr_counts_only_rows_whose_clicks_are_known(): void
+    {
+        DeviceStat::create(['date' => '2026-10-05', 'os' => 'Android', 'device' => 'Smartphone', 'site' => 'a.nl', 'revenue' => 1, 'impressions' => 1000, 'requests' => 2000, 'clicks' => 30]);
+        DeviceStat::create(['date' => '2026-10-05', 'os' => 'Android', 'device' => 'Tablet', 'site' => 'a.nl', 'revenue' => 1, 'impressions' => 500, 'requests' => 1000]);
+
+        $this->actingAs(User::factory()->create());
+
+        $component = Volt::test('devices')->set('range', ['start' => '2026-10-05', 'end' => '2026-10-05']);
+        $i = $component->instance();
+
+        $this->assertEqualsWithDelta(0.03, $i->byOs->firstWhere('os', 'Android')->ctr, 0.0001);
+        $this->assertNull($i->byDevice->firstWhere('device', 'Tablet')->ctr);
+        $this->assertEqualsWithDelta(0.03, $i->totals->ctr, 0.0001);
+        $component->assertSee('3.00%');
+    }
+
     public function test_domain_filter_merges_www_and_limits_stats(): void
     {
         Carbon::setTestNow('2026-10-06 12:00:00');

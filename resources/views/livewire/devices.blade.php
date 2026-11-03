@@ -40,6 +40,8 @@ new #[Title('Devices')] class extends Component {
                 $impressions = (int) $g->sum('impressions');
                 $revenue = (float) $g->sum('revenue');
                 $requests = (int) $g->sum('requests');
+                // CTR only over rows whose clicks are synced.
+                $clicked = $g->whereNotNull('clicks');
 
                 return (object) (collect($columns)->mapWithKeys(fn ($c) => [$c => $g->first()->{$c}])->all() + [
                     'revenue' => $revenue,
@@ -47,6 +49,9 @@ new #[Title('Devices')] class extends Component {
                     'requests' => $requests,
                     'fill' => $requests > 0 ? $impressions / $requests : null,
                     'ecpm' => $impressions > 0 ? $revenue / $impressions * 1000 : null,
+                    'clicks' => (int) $clicked->sum('clicks'),
+                    'clickedImpressions' => (int) $clicked->sum('impressions'),
+                    'ctr' => $clicked->sum('impressions') > 0 ? $clicked->sum('clicks') / $clicked->sum('impressions') : null,
                 ]);
             })
             ->sortByDesc('revenue')
@@ -85,11 +90,13 @@ new #[Title('Devices')] class extends Component {
         $all = $this->byOs;
         $revenue = (float) $all->sum('revenue');
         $impressions = (int) $all->sum('impressions');
+        $clickedImpressions = (int) $all->sum('clickedImpressions');
 
         return (object) [
             'revenue' => $revenue,
             'impressions' => $impressions,
             'ecpm' => $impressions > 0 ? $revenue / $impressions * 1000 : null,
+            'ctr' => $clickedImpressions > 0 ? $all->sum('clicks') / $clickedImpressions : null,
         ];
     }
 }; ?>
@@ -110,10 +117,11 @@ new #[Title('Devices')] class extends Component {
         </flux:select>
     </div>
 
-    <div class="grid grid-cols-3 gap-4">
+    <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <flux:card><flux:subheading>Revenue</flux:subheading><flux:heading size="xl">€ {{ number_format($this->totals->revenue, 2) }}</flux:heading></flux:card>
         <flux:card><flux:subheading>Impressions</flux:subheading><flux:heading size="xl">{{ number_format($this->totals->impressions) }}</flux:heading></flux:card>
         <flux:card><flux:subheading>eCPM</flux:subheading><flux:heading size="xl">{{ $this->totals->ecpm !== null ? '€ '.number_format($this->totals->ecpm, 2) : '—' }}</flux:heading></flux:card>
+        <flux:card><flux:subheading>CTR</flux:subheading><flux:heading size="xl">{{ $this->totals->ctr !== null ? number_format($this->totals->ctr * 100, 2).'%' : '—' }}</flux:heading></flux:card>
     </div>
 
     <div class="grid gap-6 lg:grid-cols-2">
@@ -136,6 +144,7 @@ new #[Title('Devices')] class extends Component {
                 <flux:table.column align="end">Requests</flux:table.column>
                 <flux:table.column align="end">Fill</flux:table.column>
                 <flux:table.column align="end">eCPM</flux:table.column>
+                <flux:table.column align="end">CTR</flux:table.column>
             </flux:table.columns>
             <flux:table.rows>
                 @foreach ($this->combined as $row)
@@ -147,6 +156,7 @@ new #[Title('Devices')] class extends Component {
                         <flux:table.cell align="end">{{ number_format($row->requests) }}</flux:table.cell>
                         <flux:table.cell align="end">{{ $row->fill !== null ? number_format($row->fill * 100, 1).'%' : '—' }}</flux:table.cell>
                         <flux:table.cell align="end">{{ $row->ecpm !== null ? '€ '.number_format($row->ecpm, 2) : '—' }}</flux:table.cell>
+                        <flux:table.cell align="end">{{ $row->ctr !== null ? number_format($row->ctr * 100, 2).'%' : '—' }}</flux:table.cell>
                     </flux:table.row>
                 @endforeach
             </flux:table.rows>
