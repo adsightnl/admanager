@@ -58,3 +58,19 @@ jobs:
 
       - name: Run Tests
         run: ./vendor/bin/phpunit
+
+  deploy:
+    name: Deploy to production
+    needs: ci
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    concurrency: production
+    steps:
+      - name: Run update script on server
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          script: cd /home/adsight/web/pricing.adsight.video/public_html/admanager && ./update.sh
